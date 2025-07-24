@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字雨表白 - 致最爱的你</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #matrixCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+        }
+
+        .message {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 1.5s ease, transform 1.5s ease;
+            text-shadow: 0 0 10px rgba(255, 20, 147, 0.7);
+        }
+
+        .message.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .text {
+            font-size: 3.2rem;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #ff7eb3, #ff758c, #ff4d94);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: bold;
+            letter-spacing: 2px;
+            line-height: 1.4;
+            position: relative;
+            padding: 15px 0;
+        }
+
+        .romantic-text {
+            font-size: 2.8rem;
+            background: linear-gradient(to right, #ff9ec5, #ff85b3, #ff6da1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            line-height: 1.5;
+            margin: 15px 0;
+        }
+
+        .heart-text {
+            color: #ff4d94;
+            text-shadow: 0 0 20px #ff1493, 0 0 40px #ff007f;
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+
+        .heart-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            z-index: 5;
+            pointer-events: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .heart-container.visible {
+            opacity: 1;
+        }
+
+        .heart {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            opacity: 0.8;
+            font-size: 3rem;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .countdown {
+            font-size: 15rem;
+            background: linear-gradient(to bottom, #ff9ec5, #ff4d94);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 30px rgba(255, 112, 166, 0.8);
+            animation: pulse 1s infinite alternate;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 182, 193, 0.7);
+            font-size: 1.2rem;
+            z-index: 10;
+            letter-spacing: 2px;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px #ff1493, 0 0 20px #ff007f;
+            }
+            to {
+                text-shadow: 0 0 20px #ff1493, 0 0 40px #ff007f, 0 0 60px #ff4da6;
+            }
+        }
+
+        @keyframes pulse {
+            from {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            to {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+            25% {
+                transform: translate(100px, -50px) rotate(10deg);
+            }
+            50% {
+                transform: translate(0, -100px) rotate(0deg);
+            }
+            75% {
+                transform: translate(-100px, -50px) rotate(-10deg);
+            }
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .text {
+                font-size: 2.2rem;
+            }
+
+            .romantic-text {
+                font-size: 2rem;
+            }
+
+            .countdown {
+                font-size: 8rem;
+            }
+
+            .heart-text {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrixCanvas"></canvas>
+
+    <div class="content">
+        <div id="messageContainer"></div>
+    </div>
+
+    <div class="heart-container" id="heartContainer"></div>
+
+    <div class="footer">
+        <p>❤️ 用代码编织的爱意 - 永恒的数字浪漫 ❤️</p>
+    </div>
+
+    <script>
+        // =====================
+        // 数字雨背景实现
+        // =====================
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 设置Canvas为窗口大小
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // 调整窗口大小时重置Canvas
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 数字雨字符集
+        const chars = "01❤️💖💕💞💓💗💘💝💟💌💋";
+
+        // 雨滴对象
+        class RainDrop {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * -canvas.height;
+                this.speed = Math.random() * 5 + 3;
+                this.charSize = Math.floor(Math.random() * 25 + 15);
+                this.opacity = Math.random() * 0.5 + 0.3;
+                this.char = chars[Math.floor(Math.random() * chars.length)];
+                this.color = this.getColor();
+            }
+
+            getColor() {
+                // 创建粉色/紫色渐变效果
+                const colors = [
+                    '#ffb6c1', // 浅粉色
+                    '#ff9ec5',
+                    '#ff85b3',
+                    '#ff6da1',
+                    '#ff5490',
+                    '#ff3c7e',
+                    '#e83e8c', // 紫粉色
+                    '#d6336c',
+                    '#c71585'
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            update() {
+                this.y += this.speed;
+                this.opacity = Math.min(1, this.opacity + 0.005);
+
+                // 超出屏幕则重置
+                if (this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.font = `${this.charSize}px 'Courier New', monospace`;
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.opacity;
+                ctx.fillText(this.char, this.x, this.y);
+
+                // 添加光晕效果
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+            }
+        }
+
+        // 创建雨滴
+        const rainDrops = [];
+        const rainDropCount = Math.floor(canvas.width * canvas.height / 1800);
+
+        for (let i = 0; i < rainDropCount; i++) {
+            rainDrops.push(new RainDrop());
+        }
+
+        // 数字雨动画循环
+        function animateMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            rainDrops.forEach(drop => {
+                drop.update();
+                drop.draw();
+            });
+
+            requestAnimationFrame(animateMatrix);
+        }
+
+        // =====================
+        // 文字动画实现（新增了您要求的表白语句）
+        // =====================
+        const textSequence = [
+            { text: "3", duration: 1000, countdown: true },
+            { text: "2", duration: 1000, countdown: true },
+            { text: "1", duration: 1000, countdown: true },
+            { text: "我爱你", duration: 2000 },
+            { text: "愿我们", duration: 2000 },
+            { text: "我会永远爱着你", duration: 3000, heart: true },
+            {
+                text: "宝宝，你温柔似水，聪慧如星<br>我最喜欢你了",
+                duration: 2500,
+                romantic: true
+            },
+            {
+                text: "宝宝，你眼里有光，心中有暖<br>我最喜欢你了",
+                duration: 2500,
+                romantic: true
+            },
+            {
+                text: "宝宝，你笑若春风，语似清泉<br>我最喜欢你了",
+                duration: 2500,
+                romantic: true
+            },
+            {
+                text: "宝宝，你敢爱敢闯，亦柔亦刚<br>我最喜欢你了",
+                duration: 2500,
+                romantic: true
+            },
+            { text: "永远在一起", duration: 2000 },
+            { text: "亲爱的宝贝", duration: 2500 }
+        ];
+
+        let currentIndex = 0;
+        const messageContainer = document.getElementById('messageContainer');
+        const heartContainer = document.getElementById('heartContainer');
+
+        // 显示文字消息
+        function showMessage(index) {
+            if (index >= textSequence.length) {
+                // 序列结束后重新开始
+                setTimeout(() => {
+                    currentIndex = 0;
+                    showMessage(currentIndex);
+                }, 5000);
+                return;
+            }
+
+            const message = textSequence[index];
+
+            // 创建消息元素
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message';
+
+            if (message.countdown) {
+                messageEl.innerHTML = `<div class="countdown">${message.text}</div>`;
+            } else if (message.romantic) {
+                messageEl.innerHTML = `<div class="romantic-text">${message.text}</div>`;
+            } else {
+                messageEl.innerHTML = `<div class="text ${message.heart ? 'heart-text' : ''}">${message.text}</div>`;
+            }
+
+            // 添加到容器
+            messageContainer.innerHTML = '';
+            messageContainer.appendChild(messageEl);
+
+            // 激活动画
+            setTimeout(() => {
+                messageEl.classList.add('active');
+            }, 10);
+
+            // 如果是需要显示心形的消息
+            if (message.heart) {
+                setTimeout(() => {
+                    heartContainer.classList.add('visible');
+                    createHearts();
+                }, 500);
+            } else if (index > 5 && index < 10) {
+                // 保持心形显示在浪漫语句期间
+                heartContainer.classList.add('visible');
+            } else if (index >= 10) {
+                heartContainer.classList.remove('visible');
+                heartContainer.innerHTML = '';
+            }
+
+            // 显示下一消息
+            currentIndex++;
+            setTimeout(() => showMessage(currentIndex), message.duration);
+        }
+
+        // =====================
+        // 心形特效实现
+        // =====================
+        function createHearts() {
+            heartContainer.innerHTML = '';
+            const heartCount = 30;
+
+            for (let i = 0; i < heartCount; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'heart';
+                heart.innerHTML = '❤️';
+
+                // 随机属性
+                const size = Math.random() * 3 + 1;
+                const posX = Math.random() * 100;
+                const posY = Math.random() * 100;
+                const delay = Math.random() * 2;
+                const duration = 3 + Math.random() * 3;
+                const colorVal = Math.floor(Math.random() * 100 + 150);
+
+                heart.style.fontSize = `${size}rem`;
+                heart.style.left = `${posX}%`;
+                heart.style.top = `${posY}%`;
+                heart.style.animationDelay = `${delay}s`;
+                heart.style.animationDuration = `${duration}s`;
+                heart.style.color = `rgb(255, ${Math.floor(Math.random() * 100)}, ${colorVal})`;
+                heart.style.filter = `drop-shadow(0 0 10px rgba(255, 0, 127, 0.8))`;
+
+                heartContainer.appendChild(heart);
+            }
+        }
+
+        // =====================
+        // 启动动画
+        // =====================
+        window.onload = function() {
+            // 添加动画关键帧
+            const style = document.createElement('style');
+            style.innerHTML = `
+                @keyframes pulse {
+                    0% { transform: scale(1); opacity: 0.8; }
+                    50% { transform: scale(1.2); opacity: 1; }
+                    100% { transform: scale(1); opacity: 0.8; }
+                }
+
+                @keyframes float {
+                    0% { transform: translate(0, 0) rotate(0deg); }
+                    25% { transform: translate(100px, -50px) rotate(10deg); }
+                    50% { transform: translate(0, -100px) rotate(0deg); }
+                    75% { transform: translate(-100px, -50px) rotate(-10deg); }
+                    100% { transform: translate(0, 0) rotate(0deg); }
+                }
+            `;
+            document.head.appendChild(style);
+
+            // 启动数字雨动画
+            animateMatrix();
+
+            // 延迟后开始显示文字序列
+            setTimeout(() => {
+                showMessage(currentIndex);
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
